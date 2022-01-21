@@ -1,12 +1,21 @@
-use crossterm::{cursor::Show, cursor::Hide, ExecutableCommand, event::{self, Event, KeyCode}};
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::{
+    cursor::Hide,
+    cursor::Show,
+    event::{self, Event, KeyCode},
+    ExecutableCommand,
+};
 use invaders::frame::new_frame;
+use invaders::{frame, frame::Drawable, invaders::Invaders, player::Player, render};
 use rusty_audio::Audio;
-use std::{error::Error, time::{Duration, Instant}, sync::mpsc};
+use std::{
+    error::Error,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 use std::{io, thread};
-use invaders::{render, frame, player::Player, frame::Drawable, invaders::Invaders};
 
-fn main() -> Result<(), Box<dyn Error>>{
+fn main() -> Result<(), Box<dyn Error>> {
     let mut audio = Audio::new();
     audio.add("explode", "explode.wav");
     audio.add("gameover", "game_over.wav");
@@ -21,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>>{
     terminal::enable_raw_mode()?;
     stdout.execute(EnterAlternateScreen);
     stdout.execute(Hide)?;
-    
+
     //Render loop in different thread
     let (render_tx, render_rx) = mpsc::channel();
     let render_handle = std::thread::spawn(move || {
@@ -29,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>>{
         let mut stdout = io::stdout();
         render::render(&mut stdout, &last_frame, &last_frame, true);
         loop {
-            let curr_frame= match render_rx.recv() {
+            let curr_frame = match render_rx.recv() {
                 Ok(x) => x,
                 Err(_) => break,
             };
@@ -42,23 +51,23 @@ fn main() -> Result<(), Box<dyn Error>>{
     let mut player = Player::new();
     let mut instant = Instant::now();
     let mut invaders = Invaders::new();
-    'gameloop: loop{
+    'gameloop: loop {
         // Per-frame init
         let delta = instant.elapsed();
         instant = Instant::now();
-        let mut curr_frame =  new_frame();
+        let mut curr_frame = new_frame();
         //input
-        while event::poll(Duration::default())?{
+        while event::poll(Duration::default())? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
                     KeyCode::Left => player.move_left(),
                     KeyCode::Right => player.move_right(),
-                    KeyCode::Char(' ') | KeyCode::Enter=> {
+                    KeyCode::Char(' ') | KeyCode::Enter => {
                         if player.shoot() {
                             audio.play("pew");
                         }
                     }
-                    KeyCode::Esc | KeyCode::Char('q') =>{
+                    KeyCode::Esc | KeyCode::Char('q') => {
                         audio.play("gameover");
                         break 'gameloop;
                     }
@@ -71,7 +80,7 @@ fn main() -> Result<(), Box<dyn Error>>{
         if invaders.update(delta) {
             audio.play("move");
         }
-        if player.detect_hits(&mut invaders){
+        if player.detect_hits(&mut invaders) {
             audio.play("explode");
         }
 
